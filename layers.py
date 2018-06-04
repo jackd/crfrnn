@@ -51,16 +51,19 @@ def _channels_last_to_channels_first(x):
 def _channels_first_to_channels_last(x):
     return tf.transpose(x, (0, 2, 3, 1))
 
+
 _valid_data_formats = {'channels_first', 'channels_last'}
 
 
 class CrfRnnLayerMixin(object):
     """
-    Implements the CRF-RNN layer described in:
+    Mixin class for CRF-RNN layer described in:
 
     Conditional Random Fields as Recurrent Neural Networks,
     S. Zheng, S. Jayasumana, B. Romera-Paredes, V. Vineet, Z. Su, D. Du,
     C. Huang and P. Torr, ICCV 2015
+
+    See CrfRnnLayer and keras_layers.CrfRnnLayer for full implementations.
     """
 
     def __init__(self, image_dims, num_classes,
@@ -87,7 +90,6 @@ class CrfRnnLayerMixin(object):
             raise ValueError(
                     'Invalid data_format %s. Must be in %s'
                     % (data_format, str(_valid_data_formats)))
-        # super(CrfRnnLayer, self).__init__(**kwargs)
 
     def _build(self, input_shape):
         # Weights of the spatial kernel

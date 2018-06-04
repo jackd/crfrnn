@@ -5,7 +5,7 @@ This is a minor repackaging of [this repository](https://github.com/sadeepj/crfa
 * keras-independent implementation (plus a keras wrapper implementation)
 * `tf.map_fn` allows for `batch_size > 1`
 * `tf.while_loop` implementation allows flexibility
-* `NHWC` or `NCHW` data format
+* `channels_first` or `channels_last` data format
 
 Note this repo does *not* contain the kernel for the high dimensional filter. See [Setup](#setup) below.
 
