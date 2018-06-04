@@ -34,13 +34,14 @@ import tensorflow as tf
 from .high_dim_filter import high_dim_filter
 
 
-def _diagonal_initializer(shape):
-    tf.keras.layers.Convolution2D
-    return np.eye(shape[0], shape[1], dtype=np.float32)
+def _diagonal_initializer(shape, dtype=tf.float32, **kwargs):
+    if not len(shape) == 2 and shape[0] == shape[1]:
+        raise ValueError('shape must be [n, n], got %s' % str(shape))
+    return tf.eye(shape[0], dtype=tf.float32)
 
 
-def _potts_model_initializer(shape):
-    return -1 * _diagonal_initializer(shape)
+def _potts_model_initializer(shape, dtype=tf.float32, **kwargs):
+    return -1 * _diagonal_initializer(shape, dtype, **kwargs)
 
 
 def _channels_last_to_channels_first(x):
@@ -50,8 +51,10 @@ def _channels_last_to_channels_first(x):
 def _channels_first_to_channels_last(x):
     return tf.transpose(x, (0, 2, 3, 1))
 
+_valid_data_formats = {'channels_first', 'channels_last'}
 
-class CrfRnnLayer(tf.layers.Layer):
+
+class CrfRnnLayerMixin(object):
     """
     Implements the CRF-RNN layer described in:
 
@@ -63,9 +66,9 @@ class CrfRnnLayer(tf.layers.Layer):
     def __init__(self, image_dims, num_classes,
                  theta_alpha, theta_beta, theta_gamma,
                  num_iterations,
-                 data_format='NHWC',
+                 data_format='channels_last',
                  explicit_loop=True, loop_kwargs={},
-                 map_inputs=True, map_kwargs={}, **kwargs):
+                 map_inputs=True, map_kwargs={}):
         self.image_dims = tuple(image_dims)
         self.num_classes = num_classes
         self.theta_alpha = theta_alpha
@@ -80,11 +83,13 @@ class CrfRnnLayer(tf.layers.Layer):
         self.map_inputs = map_inputs
         self.map_kwargs = map_kwargs
         self.data_format = data_format
-        if data_format not in {'NHWC', 'NCHW'}:
-            raise ValueError('Invalid data_format %s' % data_format)
-        super(CrfRnnLayer, self).__init__(**kwargs)
+        if data_format not in _valid_data_formats:
+            raise ValueError(
+                    'Invalid data_format %s. Must be in %s'
+                    % (data_format, str(_valid_data_formats)))
+        # super(CrfRnnLayer, self).__init__(**kwargs)
 
-    def build(self, input_shape):
+    def _build(self, input_shape):
         # Weights of the spatial kernel
         self.spatial_ker_weights = self.add_weight(
             name='spatial_ker_weights',
@@ -108,7 +113,7 @@ class CrfRnnLayer(tf.layers.Layer):
         self.all_ones = tf.ones(
             (self.num_classes,) + self.image_dims, dtype=np.float32)
 
-        super(CrfRnnLayer, self).build(input_shape)
+        # super(CrfRnnLayer, self).build(input_shape)
 
     def _get_norm_vals(self, softmax_out, rgb):
         spatial_norm_vals = high_dim_filter(
@@ -191,8 +196,8 @@ class CrfRnnLayer(tf.layers.Layer):
 
         return q_values
 
-    def call(self, inputs):
-        if self.data_format == 'NHWC':
+    def _call(self, inputs):
+        if self.data_format == 'channels_last':
             inputs = [_channels_last_to_channels_first(inp) for inp in inputs]
             q_values = self._get_q_values(inputs)
             return _channels_first_to_channels_last(q_values)
@@ -202,3 +207,27 @@ class CrfRnnLayer(tf.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape
+
+
+class CrfRnnLayer(tf.layers.Layer, CrfRnnLayerMixin):
+    def __init__(self, image_dims, num_classes,
+                 theta_alpha, theta_beta, theta_gamma,
+                 num_iterations,
+                 data_format='channels_last',
+                 explicit_loop=True, loop_kwargs={},
+                 map_inputs=True, map_kwargs={}, **kwargs):
+        CrfRnnLayerMixin.__init__(
+                self, image_dims, num_classes,
+                theta_alpha, theta_beta, theta_gamma,
+                num_iterations,
+                data_format=data_format,
+                explicit_loop=explicit_loop, loop_kwargs=loop_kwargs,
+                map_inputs=map_inputs, map_kwargs=map_kwargs)
+        super(CrfRnnLayer, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self._build(input_shape)
+        super(CrfRnnLayer, self).build(input_shape)
+
+    def call(self, inputs):
+        return self._call(inputs)

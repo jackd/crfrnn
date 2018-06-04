@@ -23,19 +23,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+# from __future__ import absolute_import
+# from __future__ import division
+# from __future__ import print_function
 
 import os
 import numpy as np
-from .util import get_preprocessed_image, get_label_image
-from .crfrnn_model import get_crfrnn_model_def
+from util import get_preprocessed_image, get_label_image
+from model import get_crfrnn_model_def
 
 
 def main(save=True):
     folder = os.path.dirname(__file__)
-    input_file = os.path.join('image.jpg', folder)
+    input_file = os.path.join(folder, 'image.jpg')
 
     # Download the model from https://goo.gl/ciEYZi
     saved_model_path = os.path.join(folder, 'crfrnn_keras_model.h5')
@@ -52,7 +52,7 @@ def main(save=True):
 
     if save:
         for i, prob in enumerate(probs):
-            get_label_image(probs, img_h, img_w).save(
+            get_label_image(prob, img_h, img_w).save(
                 os.path.join(folder, 'out%d.png' % i))
 
     else:
