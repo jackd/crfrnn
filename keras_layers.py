@@ -2,28 +2,36 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import keras
+# import keras
+# from keras.engine.topology import Layer
+import tensorflow as tf
 from .layers import CrfRnnLayerMixin
+Layer = tf.keras.layers.Layer
 
 
-class CrfRnnLayer(keras.engine.topology.Layer, CrfRnnLayerMixin):
+class CrfRnnLayer(Layer, CrfRnnLayerMixin):
     def __init__(self, image_dims, num_classes,
-                 theta_alpha, theta_beta, theta_gamma,
-                 num_iterations,
-                 data_format='channels_last',
+                 theta_alpha=160.0, theta_beta=3.0, theta_gamma=3.0,
+                 num_iterations=10, data_format='channels_last',
                  explicit_loop=True, loop_kwargs={},
                  map_inputs=True, map_kwargs={}, **kwargs):
-
-        super(CrfRnnLayer, self).__init__(**kwargs)
+        self.image_dims = tuple(image_dims)
+        self.num_classes = num_classes
         CrfRnnLayerMixin.__init__(
-                self, image_dims, num_classes,
-                theta_alpha, theta_beta, theta_gamma,
-                num_iterations,
-                data_format=data_format,
-                explicit_loop=explicit_loop, loop_kwargs=loop_kwargs,
-                map_inputs=map_inputs, map_kwargs=map_kwargs)
+            self, theta_alpha, theta_beta, theta_gamma, num_iterations,
+            data_format=data_format,
+            explicit_loop=explicit_loop, loop_kwargs=loop_kwargs,
+            map_inputs=map_inputs, map_kwargs=map_kwargs)
+        super(CrfRnnLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        num_classes, image_dims = self._get_dims(input_shape)
+        if image_dims != self.image_dims:
+            raise ValueError(
+                'image_dims inconsistent with value provided in constructor')
+        if num_classes != self.num_classes:
+            raise ValueError(
+                'num_classes inconsistent with value provided in constructor')
         self._build(input_shape)
         super(CrfRnnLayer, self).build(input_shape)
 

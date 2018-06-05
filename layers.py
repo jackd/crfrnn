@@ -66,14 +66,10 @@ class CrfRnnLayerMixin(object):
     See CrfRnnLayer and keras_layers.CrfRnnLayer for full implementations.
     """
 
-    def __init__(self, image_dims, num_classes,
-                 theta_alpha, theta_beta, theta_gamma,
-                 num_iterations,
+    def __init__(self, theta_alpha, theta_beta, theta_gamma, num_iterations,
                  data_format='channels_last',
                  explicit_loop=True, loop_kwargs={},
                  map_inputs=True, map_kwargs={}):
-        self.image_dims = tuple(image_dims)
-        self.num_classes = num_classes
         self.theta_alpha = theta_alpha
         self.theta_beta = theta_beta
         self.theta_gamma = theta_gamma
@@ -90,6 +86,12 @@ class CrfRnnLayerMixin(object):
             raise ValueError(
                     'Invalid data_format %s. Must be in %s'
                     % (data_format, str(_valid_data_formats)))
+
+    def _get_dims(self, input_shape):
+        unaries_shape, rgb_shape = (tf.TensorShape(s) for s in input_shape)
+        image_dims = tuple(unaries_shape.as_list()[1:3])
+        num_classes = unaries_shape[-1].value
+        return num_classes, image_dims
 
     def _build(self, input_shape):
         # Weights of the spatial kernel
@@ -212,22 +214,19 @@ class CrfRnnLayerMixin(object):
 
 
 class CrfRnnLayer(tf.layers.Layer, CrfRnnLayerMixin):
-    def __init__(self, image_dims, num_classes,
-                 theta_alpha, theta_beta, theta_gamma,
-                 num_iterations,
-                 data_format='channels_last',
+    def __init__(self, theta_alpha=160.0, theta_beta=3.0, theta_gamma=3.0,
+                 num_iterations=10, data_format='channels_last',
                  explicit_loop=True, loop_kwargs={},
                  map_inputs=True, map_kwargs={}, **kwargs):
         CrfRnnLayerMixin.__init__(
-                self, image_dims, num_classes,
-                theta_alpha, theta_beta, theta_gamma,
-                num_iterations,
+                self, theta_alpha, theta_beta, theta_gamma, num_iterations,
                 data_format=data_format,
                 explicit_loop=explicit_loop, loop_kwargs=loop_kwargs,
                 map_inputs=map_inputs, map_kwargs=map_kwargs)
         super(CrfRnnLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        self.num_classes, self.image_dims = self._get_dims(input_shape)
         self._build(input_shape)
         super(CrfRnnLayer, self).build(input_shape)
 
