@@ -89,26 +89,26 @@ class CrfRnnLayerMixin(object):
 
     def _get_dims(self, input_shape):
         unaries_shape, rgb_shape = (tf.TensorShape(s) for s in input_shape)
-        image_dims = tuple(unaries_shape.as_list()[1:3])
+        image_dims = tuple(rgb_shape.as_list()[1:3])
         num_classes = unaries_shape[-1].value
         return num_classes, image_dims
 
     def _build(self, input_shape):
         # Weights of the spatial kernel
-        self.spatial_ker_weights = self.add_weight(
+        self.spatial_ker_weights = self.add_variable(
             name='spatial_ker_weights',
             shape=(self.num_classes, self.num_classes),
             initializer=_diagonal_initializer, trainable=True)
 
         # Weights of the bilateral kernel
-        self.bilateral_ker_weights = self.add_weight(
+        self.bilateral_ker_weights = self.add_variable(
             name='bilateral_ker_weights',
             shape=(self.num_classes, self.num_classes),
             initializer=_diagonal_initializer,
             trainable=True)
 
         # Compatibility matrix
-        self.compatibility_matrix = self.add_weight(
+        self.compatibility_matrix = self.add_variable(
             name='compatibility_matrix',
             shape=(self.num_classes, self.num_classes),
             initializer=_potts_model_initializer,

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """Example usage of native tensorflow layer."""
 import tensorflow as tf
 
