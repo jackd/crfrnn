@@ -127,7 +127,6 @@ def get_crfrnn_model_def():
                          theta_alpha=160.,
                          theta_beta=3.,
                          theta_gamma=3.,
-                         num_iterations=10,
                          name='crfrnn')([upscore, img_input])
 
     # Build the model

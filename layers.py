@@ -122,7 +122,7 @@ class CrfRnnLayerMixin(object):
     def _step(self, q_values, unaries, rgb, spatial_norm_vals,
               bilateral_norm_vals):
         c = self.num_classes
-        softmax_out = tf.nn.softmax(q_values, axis=1)
+        softmax_out = tf.nn.softmax(q_values, axis=-1)
 
         # Spatial and Bilateral filtering
         spatial_out, bilateral_out = self.get_norm_vals(softmax_out, rgb)
@@ -131,20 +131,16 @@ class CrfRnnLayerMixin(object):
         bilateral_out = bilateral_out / bilateral_norm_vals
 
         # Weighting filter outputs
-        message_passing = tf.matmul(
-                self.spatial_ker_weights,
-                tf.reshape(spatial_out, (-1, c)),
-                transpose_b=True) + \
-            tf.matmul(
-                self.bilateral_ker_weights,
-                tf.reshape(bilateral_out, (-1, c)),
-                transpose_b=True)
+        key = 'ij,klmj->klmi'
+        message_passing = tf.einsum(
+            key, self.spatial_ker_weights, spatial_out) + \
+                    tf.einsum(
+            key, self.bilateral_ker_weights, bilateral_out)
 
         # Compatibility transform
-        pairwise = tf.matmul(self.compatibility_matrix, message_passing)
+        pairwise = tf.einsum(key, self.compatibility_matrix, message_passing)
 
         # Adding unary potentials
-        pairwise = tf.reshape(pairwise, unaries.shape)
         q_values = unaries - pairwise
         return q_values
 
