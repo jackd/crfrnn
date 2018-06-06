@@ -4,7 +4,7 @@ import tensorflow as tf
 
 batch_size = 2
 image_dims = (224, 224)
-n_classes = 5
+n_classes = 21
 
 
 def _run(out_fn):

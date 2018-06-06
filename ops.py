@@ -3,7 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from .high_dim_filter import high_dim_filter  # NOQA
+# from .high_dim_filter import high_dim_filter  # NOQA
+from .lattice_filter import module as _module
+
+lattice_filter = _module.lattice_filter
 
 
 def unrolled_crf_rnn(unaries, rgb, **kwargs):

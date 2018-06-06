@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2017 Sadeep Jayasumana
+Copyright (c) 2017 Sadeep Jayasumana , Miguel Monteiro
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,42 +22,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
+from os import path
+
+module = tf.load_op_library(
+    path.join(path.dirname(path.abspath(__file__)), 'lattice_filter.so'))
 
 
-_path = os.path.join(os.path.dirname(__file__), 'high_dim_filter.so')
-if not os.path.isfile(_path):
-    raise RuntimeError(
-        'No `high_dim_filter.so` available. See crfrnn README.md')
-_custom_module = tf.load_op_library(_path)
-
-
-@ops.RegisterGradient('HighDimFilter')
-def _high_dim_filter_grad(op, grad):
-    """ Gradients for the HighDimFilter op. We only need to calculate the gradients
+@ops.RegisterGradient("LatticeFilter")
+def _lattice_filter_grad(op, grad):
+    """ Gradients for the LatticeFilter op. We only need to calculate the gradients
     w.r.t. the first input (unaries) as we never need to backprop errors to the
-    second input (RGB values of the image).
+    second input (reference image).
 
     Args:
-    op: The `high_dim_filter` operation that we are differentiating.
-    grad: Gradients with respect to the output of the `high_dim_filter` op.
+    op: The `lattice_filter` operation that we are differentiating.
+    grad: Gradients with respect to the output of the `lattice_filter` op.
 
     Returns:
-    Gradients with respect to the input of `high_dim_filter`.
+    Gradients with respect to the input of `lattice_filter`.
     """
 
-    rgb = op.inputs[1]
-    grad_vals = _custom_module.high_dim_filter(
-        grad, rgb,
-        bilateral=op.get_attr('bilateral'),
-        theta_alpha=op.get_attr('theta_alpha'),
-        theta_beta=op.get_attr('theta_beta'),
-        theta_gamma=op.get_attr('theta_gamma'),
-        backwards=True)
+    reference_image = op.inputs[1]
+    grad_vals = module.lattice_filter(grad, reference_image,
+                                      bilateral=op.get_attr('bilateral'),
+                                      theta_alpha=op.get_attr('theta_alpha'),
+                                      theta_beta=op.get_attr('theta_beta'),
+                                      theta_gamma=op.get_attr('theta_gamma'),
+                                      reverse=True)
 
-    return [grad_vals, tf.zeros_like(rgb)]
-
-
-high_dim_filter = _custom_module.high_dim_filter
+    return [grad_vals, tf.zeros_like(reference_image)]

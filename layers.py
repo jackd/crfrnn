@@ -31,7 +31,8 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from .ops import high_dim_filter
+from .ops import lattice_filter
+# from .ops import high_dim_filter
 from .ops import fixed_point_iteration
 from .ops import channels_first_to_channels_last
 from .ops import channels_last_to_channels_first
@@ -109,32 +110,14 @@ class CrfRnnLayerMixin(object):
         self.all_ones = tf.ones(
             (self.num_classes,) + self.image_dims, dtype=np.float32)
 
-        # super(CrfRnnLayer, self).build(input_shape)
-
-    def _get_norm_vals(self, softmax_out, rgb):
-        spatial_norm_vals = high_dim_filter(
+    def get_norm_vals(self, softmax_out, rgb):
+        spatial_norm_vals = lattice_filter(
             softmax_out, rgb, bilateral=False,
             theta_gamma=self.theta_gamma)
-        bilateral_norm_vals = high_dim_filter(
+        bilateral_norm_vals = lattice_filter(
             softmax_out, rgb, bilateral=True, theta_alpha=self.theta_alpha,
             theta_beta=self.theta_beta)
         return spatial_norm_vals, bilateral_norm_vals
-
-    def _get_init_norm_vals(self, rgb):
-        return self._get_norm_vals(self.all_ones, rgb)
-
-    def get_norm_vals(self, softmax_out, rgb):
-        if softmax_out is None:
-            def fn(rgb):
-                return self._get_norm_vals(self.all_ones, rgb)
-            inputs = rgb
-        else:
-            def fn(inputs):
-                return self._get_norm_vals(*inputs)
-            inputs = softmax_out, rgb
-        return tf.map_fn(
-            fn, inputs, (tf.float32, tf.float32),
-            **self.map_kwargs)
 
     def _step(self, q_values, unaries, rgb, spatial_norm_vals,
               bilateral_norm_vals):
@@ -147,28 +130,27 @@ class CrfRnnLayerMixin(object):
         spatial_out = spatial_out / spatial_norm_vals
         bilateral_out = bilateral_out / bilateral_norm_vals
 
-        hw = self.image_dims[0] * self.image_dims[1]
         # Weighting filter outputs
-
-        def batch_matmul(w, x):
-            return tf.einsum('ij,kjl->kil', w, x)
-
-        message_passing = (batch_matmul(
-            self.spatial_ker_weights, tf.reshape(spatial_out, (-1, c, hw))) +
-            batch_matmul(
+        message_passing = tf.matmul(
+                self.spatial_ker_weights,
+                tf.reshape(spatial_out, (-1, c)),
+                transpose_b=True) + \
+            tf.matmul(
                 self.bilateral_ker_weights,
-                tf.reshape(bilateral_out, (-1, c, hw))))
+                tf.reshape(bilateral_out, (-1, c)),
+                transpose_b=True)
 
         # Compatibility transform
-        pairwise = batch_matmul(self.compatibility_matrix, message_passing)
+        pairwise = tf.matmul(self.compatibility_matrix, message_passing)
 
         # Adding unary potentials
-        pairwise = tf.reshape(pairwise, (-1, c) + self.image_dims)
+        pairwise = tf.reshape(pairwise, unaries.shape)
         q_values = unaries - pairwise
         return q_values
 
     def get_update_fn(self, unaries, rgb):
-        spatial_norm_vals, bilateral_norm_vals = self.get_norm_vals(None, rgb)
+        spatial_norm_vals, bilateral_norm_vals = self.get_norm_vals(
+            tf.ones_like(unaries), rgb)
 
         def f(q_values):
             return self._step(
@@ -186,10 +168,10 @@ class CrfRnnLayerMixin(object):
         return q_values
 
     def _call(self, inputs):
-        if self.data_format == 'channels_last':
-            inputs = [channels_last_to_channels_first(inp) for inp in inputs]
+        if self.data_format == 'channels_first':
+            inputs = [channels_first_to_channels_last(inp) for inp in inputs]
             q_values = self._get_q_values(inputs)
-            return channels_first_to_channels_last(q_values)
+            return channels_last_to_channels_first(q_values)
         else:
             q_values = self._get_q_values(inputs)
             return q_values

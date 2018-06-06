@@ -1,13 +1,8 @@
 Tensorflow implementation of CrfRnn layer according to [Conditional Random Fields as Recurrent Neural Networks](http://www.robots.ox.ac.uk/~szheng/papers/CRFasRNN.pdf).
 
-This is a minor repackaging of [this repository](https://github.com/sadeepj/crfasrnn_keras) with the following changes:
-* repackaged for importing into other projects
-* keras-independent implementation (plus a keras wrapper implementation)
-* `tf.map_fn` allows for `batch_size > 1`
-* `tf.while_loop` implementation allows flexibility
-* `channels_first` or `channels_last` data format
+This is a minor repackaging of [this repo](https://github.com/MiguelMonteiro/CRFasRNNLayer), which itself is based on the work of [this repo](https://github.com/sadeepj/crfasrnn_keras).
 
-Note this repo does *not* contain the kernel for the high dimensional filter. See [Setup](#setup) below.
+Note this repo does *not* contain the kernel for the lattice dimensional filter. See [Setup](#setup) below.
 
 ### Setup
 1. Clone this repository and add the parent directory to your `PYTHONPATH`
@@ -16,18 +11,19 @@ cd /path/to/parent_dir
 git clone https://github.com/jackd/crfrnn
 export PYTHONPATH=$PYTHONPATH:/path/to/parent_dir
 ```
-2. Follow instructions [here](https://github.com/sadeepj/crfasrnn_keras) to build the kernel.
-3. Copy the built `.so` file to `./high_dim_filter`
+2. Get the source code for the kernel.
 ```
-cd /path/to/parent_dir/crfrnn
-cp /path/to/built/high_dim_filter.so ./high_dim_filter/
+git clone --recursive https://github.com/MiguelMonteiro/CRFasRNNLayer
 ```
+3. change the number of channels to an appropriate value (to run the examples, this must be 21).
+4. build - you may need to [manually install the latest version of cmake](https://askubuntu.com/questions/355565/how-do-i-install-the-latest-version-of-cmake-from-the-command-line). Note you'll need to change `INPUT_CHANNELS` to the number of classes.
+5. Copy `lattice_filter.so` to `./lattice_filter/lattice_filter.so`
 
 ### Keras Demo
 To run the demo:
 1. Follow [Setup](#setup) instructions above.
 2. Download pretrained model weights [here](https://goo.gl/ciEYZi).
-3. Move weights to `example/keras/crfrnn_keras_model.h5`.
+3. Move weights to `./example/keras/crfrnn_keras_model.h5`.
 4. Run the `run_demo.py` script.
 ```
 cd /path/to/parent_dir/crfrnn/example/keras
