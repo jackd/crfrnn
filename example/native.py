@@ -28,6 +28,7 @@ def run_layer():
 
     def f(logits, image):
         layer = CrfRnnLayer()
+        # layer = CrfRnnLayer(fpi_kwargs={'explicit_loop': False})
         return layer((logits, image))
     _run(f)
     print('Done layer!')

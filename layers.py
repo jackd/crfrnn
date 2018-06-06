@@ -31,7 +31,10 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from .high_dim_filter import high_dim_filter
+from .ops import high_dim_filter
+from .ops import fixed_point_iteration
+from .ops import channels_first_to_channels_last
+from .ops import channels_last_to_channels_first
 
 
 def _diagonal_initializer(shape, dtype=tf.float32, **kwargs):
@@ -42,14 +45,6 @@ def _diagonal_initializer(shape, dtype=tf.float32, **kwargs):
 
 def _potts_model_initializer(shape, dtype=tf.float32, **kwargs):
     return -1 * _diagonal_initializer(shape, dtype, **kwargs)
-
-
-def _channels_last_to_channels_first(x):
-    return tf.transpose(x, (0, 3, 1, 2))
-
-
-def _channels_first_to_channels_last(x):
-    return tf.transpose(x, (0, 2, 3, 1))
 
 
 _valid_data_formats = {'channels_first', 'channels_last'}
@@ -66,19 +61,16 @@ class CrfRnnLayerMixin(object):
     See CrfRnnLayer and keras_layers.CrfRnnLayer for full implementations.
     """
 
-    def __init__(self, theta_alpha, theta_beta, theta_gamma, num_iterations,
-                 data_format='channels_last',
-                 explicit_loop=True, loop_kwargs={},
-                 map_inputs=True, map_kwargs={}):
+    def __init__(self, theta_alpha, theta_beta, theta_gamma,
+                 data_format='channels_last', fpi_kwargs={}, map_inputs=True,
+                 map_kwargs={}):
         self.theta_alpha = theta_alpha
         self.theta_beta = theta_beta
         self.theta_gamma = theta_gamma
-        self.num_iterations = num_iterations
         self.spatial_ker_weights = None
         self.bilateral_ker_weights = None
         self.compatibility_matrix = None
-        self.explicit_loop = explicit_loop
-        self.loop_kwargs = loop_kwargs
+        self.fpi_kwargs = fpi_kwargs
         self.map_inputs = map_inputs
         self.map_kwargs = map_kwargs
         self.data_format = data_format
@@ -175,36 +167,29 @@ class CrfRnnLayerMixin(object):
         q_values = unaries - pairwise
         return q_values
 
-    def _get_q_values(self, inputs):
-        unaries, rgb = inputs
+    def get_update_fn(self, unaries, rgb):
         spatial_norm_vals, bilateral_norm_vals = self.get_norm_vals(None, rgb)
 
-        if self.explicit_loop:
-            q_values = unaries
-            for i in range(self.num_iterations):
-                q_values = self._step(
-                    q_values, unaries, rgb, spatial_norm_vals,
-                    bilateral_norm_vals)
-        else:
-            def cond(*args):
-                return True
+        def f(q_values):
+            return self._step(
+                q_values, unaries, rgb, spatial_norm_vals,
+                bilateral_norm_vals)
 
-            def body(q_values):
-                return self._step(
-                    q_values, unaries, rgb, spatial_norm_vals,
-                    bilateral_norm_vals)
+        return f
 
-            q_values = tf.while_loop(
-                cond, body, (unaries,),
-                maximum_iterations=self.num_iterations, **self.loop_kwargs)
+    def _get_q_values(self, inputs):
+        unaries, rgb = inputs
+        update_fn = self.get_update_fn(unaries, rgb)
+        q_values = fixed_point_iteration(
+            update_fn, (unaries,), **self.fpi_kwargs)
 
         return q_values
 
     def _call(self, inputs):
         if self.data_format == 'channels_last':
-            inputs = [_channels_last_to_channels_first(inp) for inp in inputs]
+            inputs = [channels_last_to_channels_first(inp) for inp in inputs]
             q_values = self._get_q_values(inputs)
-            return _channels_first_to_channels_last(q_values)
+            return channels_first_to_channels_last(q_values)
         else:
             q_values = self._get_q_values(inputs)
             return q_values
@@ -215,13 +200,11 @@ class CrfRnnLayerMixin(object):
 
 class CrfRnnLayer(tf.layers.Layer, CrfRnnLayerMixin):
     def __init__(self, theta_alpha=160.0, theta_beta=3.0, theta_gamma=3.0,
-                 num_iterations=10, data_format='channels_last',
-                 explicit_loop=True, loop_kwargs={},
-                 map_inputs=True, map_kwargs={}, **kwargs):
+                 data_format='channels_last', fpi_kwargs={}, map_inputs=True,
+                 map_kwargs={}, **kwargs):
         CrfRnnLayerMixin.__init__(
-                self, theta_alpha, theta_beta, theta_gamma, num_iterations,
-                data_format=data_format,
-                explicit_loop=explicit_loop, loop_kwargs=loop_kwargs,
+                self, theta_alpha, theta_beta, theta_gamma,
+                data_format=data_format, fpi_kwargs=fpi_kwargs,
                 map_inputs=map_inputs, map_kwargs=map_kwargs)
         super(CrfRnnLayer, self).__init__(**kwargs)
 
