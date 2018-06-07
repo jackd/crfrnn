@@ -16,8 +16,30 @@ export PYTHONPATH=$PYTHONPATH:/path/to/parent_dir
 git clone --recursive https://github.com/MiguelMonteiro/CRFasRNNLayer
 ```
 3. change the number of channels to an appropriate value (to run the examples, this must be 21).
-4. build - you may need to [manually install the latest version of cmake](https://askubuntu.com/questions/355565/how-do-i-install-the-latest-version-of-cmake-from-the-command-line). Note you'll need to change `INPUT_CHANNELS` to the number of classes.
+4. build (you may need to [manually install cmake](#manually-install-cmake)). Note you'll need to change `INPUT_CHANNELS` to the number of classes.
 5. Copy `lattice_filter.so` to `./lattice_filter/lattice_filter.so`
+
+### Manually Install CMake
+Building the kernel requires CMake 3.9 or above. Ubuntu 16.04 ships with 3.5, so you may need to manually install the latest version. Following the instrucitons [here](https://askubuntu.com/questions/355565/how-do-i-install-the-latest-version-of-cmake-from-the-command-line):
+```
+sudo apt remove cmake
+sudo apt purge cmake
+
+version=3.11
+build=2
+mkdir ~/temp
+cd ~/temp
+wget https://cmake.org/files/v$version/cmake-$version.$build.tar.gz
+tar -xzvf cmake-$version.$build.tar.gz
+cd cmake-$version.$build/
+
+./bootstrap
+make -j4
+sudo make install
+
+# Test
+cmake --version
+```
 
 ### Keras Demo
 To run the demo:
