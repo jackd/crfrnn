@@ -12,14 +12,12 @@ from .layers import CrfRnnLayerMixin
 class CrfRnnLayer(Layer, CrfRnnLayerMixin):
     def __init__(self, image_dims, num_classes,
                  theta_alpha=160.0, theta_beta=3.0, theta_gamma=3.0,
-                 data_format='channels_last',
-                 fpi_kwargs={}, map_inputs=True, map_kwargs={}, **kwargs):
+                 data_format='channels_last', fpi_kwargs={}, **kwargs):
         self.image_dims = tuple(image_dims)
         self.num_classes = num_classes
         CrfRnnLayerMixin.__init__(
             self, theta_alpha, theta_beta, theta_gamma,
-            data_format=data_format, fpi_kwargs=fpi_kwargs,
-            map_inputs=map_inputs, map_kwargs=map_kwargs)
+            data_format=data_format, fpi_kwargs=fpi_kwargs)
         super(CrfRnnLayer, self).__init__(**kwargs)
 
     def add_variable(self, *args, **kwargs):

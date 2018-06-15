@@ -63,8 +63,7 @@ class CrfRnnLayerMixin(object):
     """
 
     def __init__(self, theta_alpha, theta_beta, theta_gamma,
-                 data_format='channels_last', fpi_kwargs={}, map_inputs=True,
-                 map_kwargs={}):
+                 data_format='channels_last', fpi_kwargs={}):
         self.theta_alpha = theta_alpha
         self.theta_beta = theta_beta
         self.theta_gamma = theta_gamma
@@ -72,8 +71,6 @@ class CrfRnnLayerMixin(object):
         self.bilateral_ker_weights = None
         self.compatibility_matrix = None
         self.fpi_kwargs = fpi_kwargs
-        self.map_inputs = map_inputs
-        self.map_kwargs = map_kwargs
         self.data_format = data_format
         if data_format not in _valid_data_formats:
             raise ValueError(
@@ -177,12 +174,10 @@ class CrfRnnLayerMixin(object):
 
 class CrfRnnLayer(tf.layers.Layer, CrfRnnLayerMixin):
     def __init__(self, theta_alpha=160.0, theta_beta=3.0, theta_gamma=3.0,
-                 data_format='channels_last', fpi_kwargs={}, map_inputs=True,
-                 map_kwargs={}, **kwargs):
+                 data_format='channels_last', fpi_kwargs={}, **kwargs):
         CrfRnnLayerMixin.__init__(
                 self, theta_alpha, theta_beta, theta_gamma,
-                data_format=data_format, fpi_kwargs=fpi_kwargs,
-                map_inputs=map_inputs, map_kwargs=map_kwargs)
+                data_format=data_format, fpi_kwargs=fpi_kwargs)
         super(CrfRnnLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
